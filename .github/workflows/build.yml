@@ -20,13 +20,24 @@ jobs:
           gradle-version: '8.8'
 
       - name: Unzip project
-        run: unzip -o monowire-forge-1.20.1.zip
+        run: |
+          mkdir -p unpacked
+          unzip -o monowire-forge-1.20.1.zip -d unpacked
+          echo "Files in archive:"
+          find unpacked -maxdepth 3 | head -50
 
       - name: Build
-        working-directory: monowire-mod
-        run: gradle build --no-daemon --stacktrace
+        run: |
+          BUILD_FILE=$(find unpacked -name build.gradle -not -path '*/build/*' | head -1)
+          if [ -z "$BUILD_FILE" ]; then echo "build.gradle not found in archive"; exit 1; fi
+          PROJECT_DIR=$(dirname "$BUILD_FILE")
+          echo "Project folder: $PROJECT_DIR"
+          cd "$PROJECT_DIR"
+          gradle build --no-daemon --stacktrace
+          mkdir -p "$GITHUB_WORKSPACE/out"
+          cp build/libs/*.jar "$GITHUB_WORKSPACE/out/"
 
       - uses: actions/upload-artifact@v4
         with:
           name: monowire-jar
-          path: monowire-mod/build/libs/*.jar
+          path: out/*.jar
